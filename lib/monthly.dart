@@ -18,6 +18,10 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
   double monthlySalary = 0.0;
   int _indexSelection = 0; // 1 = current page
 
+  // New state for year selection
+  List<int> availableYears = [];
+  int selectedYear = DateTime.now().year;
+
   // Track which month is selected on the bar chart
   int selectedMonthIndex = DateTime.now().month - 1; // default to current month
 
@@ -56,21 +60,26 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
       final txnSnapshot =
           await firestore.collection('predicted_transactions').get();
 
-      // Reset the array each time
+      // Reset the expenses array
       monthlyExpenses = List.filled(12, 0.0);
+      // Collect available years
+      Set<int> yearsSet = {};
 
-      // 3. Sum up expenses by month
+      // 3. Sum up expenses by month for the selected year
       for (final doc in txnSnapshot.docs) {
         final data = doc.data();
         final amount = (data['Predicted_Amount'] ?? 0).toDouble();
         final dateStr = data['Predicted_Date'] ?? '';
-
         final date = DateTime.tryParse(dateStr);
         if (date != null) {
-          final monthIndex = date.month - 1; // 0-based index
-          monthlyExpenses[monthIndex] += amount;
+          yearsSet.add(date.year);
+          if (date.year == selectedYear) {
+            final monthIndex = date.month - 1; // 0-based index
+            monthlyExpenses[monthIndex] += amount;
+          }
         }
       }
+      availableYears = yearsSet.toList()..sort();
 
       setState(() {
         isLoading = false;
@@ -140,6 +149,49 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
             SingleChildScrollView(
               child: Column(
                 children: [
+                  // New: Year selection dropdown
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        DropdownButton<int>(
+                          value: selectedYear,
+                          dropdownColor: Color(0xFF505AA9),
+                          style: const TextStyle(color: Colors.white),
+                          iconEnabledColor: Colors.white,
+                          onChanged: (year) {
+                            if (year != null) {
+                              setState(() {
+                                selectedYear = year;
+                                isLoading = true;
+                              });
+                              _loadData();
+                            }
+                          },
+                          items:
+                              availableYears.map((year) {
+                                return DropdownMenuItem<int>(
+                                  value: year,
+                                  child: Text(
+                                    year.toString(),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'اختر السنة',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                          textDirection: TextDirection.rtl,
+                        ),
+                      ],
+                    ),
+                  ),
                   // Top card with monthly info
                   Container(
                     width: double.infinity,

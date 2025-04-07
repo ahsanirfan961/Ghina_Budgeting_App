@@ -158,7 +158,12 @@ class Mainpage1State extends State<Mainpage1> {
                     ),
                   ),
                   backgroundColor: Colors.grey[300]!,
-                  progressColor: percent > 0.8 ? Colors.red : Colors.blue,
+                  progressColor:
+                      percent > 0.8
+                          ? Colors.red
+                          : percent > 0.5
+                          ? Colors.yellow
+                          : Colors.blue,
                 ),
 
                 const SizedBox(height: 20),
@@ -204,7 +209,12 @@ class Mainpage1State extends State<Mainpage1> {
                               child: LinearProgressIndicator(
                                 value: percent,
                                 backgroundColor: Colors.grey[300],
-                                color: percent > 0.8 ? Colors.red : Colors.blue,
+                                color:
+                                    percent > 0.8
+                                        ? Colors.red
+                                        : percent > 0.5
+                                        ? Colors.yellow
+                                        : Colors.blue,
                                 minHeight: 8,
                               ),
                             ),
@@ -251,6 +261,27 @@ class Mainpage1State extends State<Mainpage1> {
                                 return txnDate.month == currentMonth &&
                                     txnDate.year == currentYear;
                               }).toList();
+
+                          // sort transactions by latest date on top
+                          filteredDocs.sort((a, b) {
+                            final dateA = DateTime.tryParse(
+                              (a.data()
+                                      as Map<
+                                        String,
+                                        dynamic
+                                      >)['Predicted_Date'] ??
+                                  '',
+                            );
+                            final dateB = DateTime.tryParse(
+                              (b.data()
+                                      as Map<
+                                        String,
+                                        dynamic
+                                      >)['Predicted_Date'] ??
+                                  '',
+                            );
+                            return dateB!.compareTo(dateA!);
+                          });
 
                           if (filteredDocs.isEmpty) {
                             return const Text(
