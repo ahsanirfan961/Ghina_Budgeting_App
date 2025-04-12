@@ -52,14 +52,23 @@ class Mainpage1State extends State<Mainpage1> {
 
     // 3. Get predicted transactions
     final transactions =
-        await firestore.collection('predicted_transactions').get();
+        await firestore.collection('predicted_transactions_latest').get();
 
     // 4. Sum monthly expenses
     // ignore: avoid_types_as_parameter_names
     totalExpenses = transactions.docs.fold(0.0, (sum, doc) {
       final data = doc.data();
       final dateStr = data['Predicted_Date'] ?? '';
-      final amount = (data['Predicted_Amount'] ?? 0).toDouble();
+
+      // Safely convert amount to double regardless of its original type
+      final dynamic rawAmount = data['Predicted_Amount'] ?? 0;
+      final double amount;
+      if (rawAmount is num) {
+        amount = rawAmount.toDouble();
+      } else {
+        amount = double.tryParse(rawAmount.toString()) ?? 0.0;
+      }
+
       final txnDate = DateTime.tryParse(dateStr);
 
       if (txnDate != null &&
@@ -236,7 +245,7 @@ class Mainpage1State extends State<Mainpage1> {
                       StreamBuilder<QuerySnapshot>(
                         stream:
                             FirebaseFirestore.instance
-                                .collection('predicted_transactions')
+                                .collection('predicted_transactions_latest')
                                 .snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
@@ -301,8 +310,19 @@ class Mainpage1State extends State<Mainpage1> {
                                       as Map<String, dynamic>;
                               final shopName =
                                   data['Predicted_Shop_Name'] ?? '—';
-                              final amount =
-                                  data['Predicted_Amount']?.toDouble() ?? 0.0;
+
+                              // Safely convert amount to double
+                              final dynamic rawAmount =
+                                  data['Predicted_Amount'] ?? 0;
+                              final double amount;
+                              if (rawAmount is num) {
+                                amount = rawAmount.toDouble();
+                              } else {
+                                amount =
+                                    double.tryParse(rawAmount.toString()) ??
+                                    0.0;
+                              }
+
                               final dateStr = data['Predicted_Date'] ?? '';
 
                               return Card(
@@ -311,7 +331,7 @@ class Mainpage1State extends State<Mainpage1> {
                                 margin: const EdgeInsets.symmetric(vertical: 8),
                                 child: ListTile(
                                   title: Text(
-                                    shopName,
+                                    shopName.toString(),
                                     textDirection: TextDirection.rtl,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,

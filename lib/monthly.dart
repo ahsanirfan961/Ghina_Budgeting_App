@@ -58,7 +58,7 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
 
       // 2. Fetch predicted transactions
       final txnSnapshot =
-          await firestore.collection('predicted_transactions').get();
+          await firestore.collection('predicted_transactions_latest').get();
 
       // Reset the expenses array
       monthlyExpenses = List.filled(12, 0.0);
@@ -110,14 +110,36 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Identify highest and lowest expense months
-    double maxExpense = monthlyExpenses.reduce((a, b) => a > b ? a : b);
-    double minExpense = monthlyExpenses.reduce((a, b) => a < b ? a : b);
+    // Get the current date to determine which months to consider
+    final now = DateTime.now();
 
-    int maxIndex = monthlyExpenses.indexOf(maxExpense);
-    int minIndex = monthlyExpenses.indexOf(minExpense);
+    // Create a filtered list of expenses excluding future months when in current year
+    List<double> filteredExpenses = [];
+    List<int> filteredMonthIndices = [];
 
-    // The currently selected month’s total expense
+    for (int i = 0; i < monthlyExpenses.length; i++) {
+      // Include all months for past years, but only up to the current month for the current year
+      if (selectedYear < now.year ||
+          (selectedYear == now.year && i < now.month)) {
+        filteredExpenses.add(monthlyExpenses[i]);
+        filteredMonthIndices.add(i);
+      }
+    }
+
+    // Handle empty filtered list (edge case)
+    if (filteredExpenses.isEmpty) {
+      filteredExpenses = [0.0];
+      filteredMonthIndices = [0];
+    }
+
+    // Use filtered data to find max/min expenses
+    double maxExpense = filteredExpenses.reduce((a, b) => a > b ? a : b);
+    double minExpense = filteredExpenses.reduce((a, b) => a < b ? a : b);
+
+    int maxIndex = filteredMonthIndices[filteredExpenses.indexOf(maxExpense)];
+    int minIndex = filteredMonthIndices[filteredExpenses.indexOf(minExpense)];
+
+    // The currently selected month's total expense
     double currentMonthExpense = monthlyExpenses[selectedMonthIndex];
 
     return Scaffold(
@@ -374,7 +396,6 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
                                   ),
                                   textDirection: TextDirection.rtl,
                                 ),
-                                const SizedBox(width: 8),
                                 Image.asset(
                                   'assets/images/rial.png',
                                   width: 20,
@@ -386,7 +407,9 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
                               ],
                             ),
                             Text(
-                              'الشهر الأعلى إنفاقاً: ${monthNames[maxIndex]}',
+                              filteredExpenses.length > 1
+                                  ? 'الشهر الأعلى إنفاقاً: ${monthNames[maxIndex]}'
+                                  : 'لا توجد بيانات كافية',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -411,7 +434,6 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
                                   ),
                                   textDirection: TextDirection.rtl,
                                 ),
-                                const SizedBox(width: 8),
                                 Image.asset(
                                   'assets/images/rial.png',
                                   width: 20,
@@ -423,7 +445,9 @@ class MonthlyExpensesPageState extends State<MonthlyExpensesPage> {
                               ],
                             ),
                             Text(
-                              'الشهر الأقل إنفاقاً: ${monthNames[minIndex]}',
+                              filteredExpenses.length > 1
+                                  ? 'الشهر الأقل إنفاقاً: ${monthNames[minIndex]}'
+                                  : 'لا توجد بيانات كافية',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
